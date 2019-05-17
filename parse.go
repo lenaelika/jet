@@ -168,7 +168,7 @@ func (s *Set) parse(name, text string) (t *Template, err error) {
 
 	t.ParseName = t.Name
 	lexer := lex(t.Name, text, false)
-	lexer.setDelimiters(s.leftDelim, s.rightDelim)
+	lexer.setDelimiters(s.leftDelim, s.rightDelim, s.leftComment, s.rightComment)
 	lexer.run()
 	t.startParse(lexer)
 	t.parseTemplate()

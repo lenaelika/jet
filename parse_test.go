@@ -105,3 +105,10 @@ func TestParseTemplateWithCustomDelimiters(t *testing.T) {
 	p := ParserTestCase{T: t, set: set}
 	p.TestPrintFile("custom_delimiters.jet")
 }
+
+func TestParseTemplateWithCustomCommentDelimiters(t *testing.T) {
+	set := NewSet(nil, "./testData")
+	set.CommentDelims("{#", "#}")
+	p := ParserTestCase{T: t, set: set}
+	p.TestPrintFile("custom_comment_delims.jet")
+}

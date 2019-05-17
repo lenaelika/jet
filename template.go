@@ -43,6 +43,8 @@ type Set struct {
 	developmentMode   bool
 	leftDelim         string
 	rightDelim        string
+	leftComment       string
+	rightComment      string
 }
 
 // SetDevelopmentMode set's development mode on/off, in development mode template will be recompiled on every run
@@ -118,6 +120,13 @@ func (s *Set) AddGopathPath(path string) {
 func (s *Set) Delims(left, right string) {
 	s.leftDelim = left
 	s.rightDelim = right
+}
+
+// CommentDelims sets the delimiters for comments. Parsed templates will
+// inherit the settings. Not setting them leaves them at the default: {* or *}.
+func (s *Set) CommentDelims(left, right string) {
+	s.leftComment = left
+	s.rightComment = right
 }
 
 // resolveName try to resolve a template name, the steps as follow

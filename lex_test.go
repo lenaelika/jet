@@ -43,7 +43,14 @@ func lexerTestCase(t *testing.T, input string, items ...itemType) {
 
 func lexerTestCaseCustomDelimiters(t *testing.T, leftDelim, rightDelim, input string, items ...itemType) {
 	lexer := lex("test.customDelimiters", input, false)
-	lexer.setDelimiters(leftDelim, rightDelim)
+	lexer.setDelimiters(leftDelim, rightDelim, "", "")
+	lexer.run()
+	lexerTestCaseCustomLexer(t, lexer, input, items...)
+}
+
+func lexerTestCaseCustomCommentDelims(t *testing.T, leftComment, rightComment, input string, items ...itemType) {
+	lexer := lex("test.customCommentDelims", input, false)
+	lexer.setDelimiters("", "", leftComment, rightComment)
 	lexer.run()
 	lexerTestCaseCustomLexer(t, lexer, input, items...)
 }
@@ -84,6 +91,11 @@ func TestCustomDelimiters(t *testing.T) {
 	lexerTestCaseCustomDelimiters(t, "[[", "]]", `[[.Ex!1]]`, itemLeftDelim, itemField, itemNot, itemNumber, itemRightDelim)
 	lexerTestCaseCustomDelimiters(t, "[[", "]]", `[[.Ex==1]]`, itemLeftDelim, itemField, itemEquals, itemNumber, itemRightDelim)
 	lexerTestCaseCustomDelimiters(t, "[[", "]]", `[[.Ex&&1]]`, itemLeftDelim, itemField, itemAnd, itemNumber, itemRightDelim)
+}
+
+func TestCustomCommentDelims(t *testing.T) {
+	lexerTestCaseCustomCommentDelims(t, "{#", "#}", `{##}`)
+	lexerTestCaseCustomCommentDelims(t, "{#", "#}", `{{ . }}{# line #}`, itemLeftDelim, itemIdentifier, itemRightDelim)
 }
 
 func TestLexNegatives(t *testing.T) {

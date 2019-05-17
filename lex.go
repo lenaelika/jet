@@ -128,10 +128,10 @@ var key = map[string]itemType{
 const eof = -1
 
 const (
-	defaultLeftDelim  = "{{"
-	defaultRightDelim = "}}"
-	leftComment       = "{*"
-	rightComment      = "*}"
+	defaultLeftDelim    = "{{"
+	defaultRightDelim   = "}}"
+	defaultLeftComment  = "{*"
+	defaultRightComment = "*}"
 )
 
 // stateFn represents the state of the scanner as a function that returns the next state.
@@ -139,26 +139,34 @@ type stateFn func(*lexer) stateFn
 
 // lexer holds the state of the scanner.
 type lexer struct {
-	name       string    // the name of the input; used only for error reports
-	input      string    // the string being scanned
-	state      stateFn   // the next lexing function to enter
-	pos        Pos       // current position in the input
-	start      Pos       // start position of this item
-	width      Pos       // width of last rune read from input
-	lastPos    Pos       // position of most recent item returned by nextItem
-	items      chan item // channel of scanned items
-	parenDepth int       // nesting depth of ( ) exprs
-	lastType   itemType
-	leftDelim  string
-	rightDelim string
+	name         string    // the name of the input; used only for error reports
+	input        string    // the string being scanned
+	state        stateFn   // the next lexing function to enter
+	pos          Pos       // current position in the input
+	start        Pos       // start position of this item
+	width        Pos       // width of last rune read from input
+	lastPos      Pos       // position of most recent item returned by nextItem
+	items        chan item // channel of scanned items
+	parenDepth   int       // nesting depth of ( ) exprs
+	lastType     itemType
+	leftDelim    string
+	rightDelim   string
+	leftComment  string
+	rightComment string
 }
 
-func (l *lexer) setDelimiters(leftDelim, rightDelim string) {
+func (l *lexer) setDelimiters(leftDelim, rightDelim, leftComment, rightComment string) {
 	if leftDelim != "" {
 		l.leftDelim = leftDelim
 	}
 	if rightDelim != "" {
 		l.rightDelim = rightDelim
+	}
+	if leftComment != "" {
+		l.leftComment = leftComment
+	}
+	if rightComment != "" {
+		l.rightComment = rightComment
 	}
 }
 
@@ -246,11 +254,13 @@ func (l *lexer) drain() {
 // lex creates a new scanner for the input string.
 func lex(name, input string, run bool) *lexer {
 	l := &lexer{
-		name:       name,
-		input:      input,
-		items:      make(chan item),
-		leftDelim:  defaultLeftDelim,
-		rightDelim: defaultRightDelim,
+		name:         name,
+		input:        input,
+		items:        make(chan item),
+		leftDelim:    defaultLeftDelim,
+		rightDelim:   defaultRightDelim,
+		leftComment:  defaultLeftComment,
+		rightComment: defaultRightComment,
 	}
 	if run {
 		l.run()
@@ -282,7 +292,7 @@ func lexText(l *lexer) stateFn {
 				}
 				return lexLeftDelim
 			}
-			if strings.HasPrefix(l.input[l.pos:], leftComment) {
+			if strings.HasPrefix(l.input[l.pos:], l.leftComment) {
 				if l.pos > l.start {
 					l.emit(itemText)
 				}
@@ -310,12 +320,12 @@ func lexLeftDelim(l *lexer) stateFn {
 
 // lexComment scans a comment. The left comment marker is known to be present.
 func lexComment(l *lexer) stateFn {
-	l.pos += Pos(len(leftComment))
-	i := strings.Index(l.input[l.pos:], rightComment)
+	l.pos += Pos(len(l.leftComment))
+	i := strings.Index(l.input[l.pos:], l.rightComment)
 	if i < 0 {
 		return l.errorf("unclosed comment")
 	}
-	l.pos += Pos(i + len(rightComment))
+	l.pos += Pos(i + len(l.rightComment))
 	l.ignore()
 	return lexText
 }
