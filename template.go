@@ -35,6 +35,7 @@ import (
 type Set struct {
 	loader            Loader
 	templates         map[string]*Template // parsed templates
+	templatesErrors   map[string]error     // template parsing errors
 	escapee           SafeWriter           // escapee to use at runtime
 	globals           VarMap               // global scope for this template set
 	tmx               *sync.RWMutex        // template parsing mutex
@@ -77,7 +78,15 @@ func (s *Set) AddGlobalFunc(key string, fn Func) *Set {
 
 // NewSetLoader creates a new set with custom Loader
 func NewSetLoader(escapee SafeWriter, loader Loader) *Set {
-	return &Set{loader: loader, tmx: &sync.RWMutex{}, gmx: &sync.RWMutex{}, escapee: escapee, templates: make(map[string]*Template), defaultExtensions: append([]string{}, defaultExtensions...)}
+	return &Set{
+		loader:            loader,
+		tmx:               &sync.RWMutex{},
+		gmx:               &sync.RWMutex{},
+		escapee:           escapee,
+		templates:         make(map[string]*Template),
+		templatesErrors:   make(map[string]error),
+		defaultExtensions: append([]string{}, defaultExtensions...),
+	}
 }
 
 // NewHTMLSetLoader creates a new set with custom Loader
@@ -252,12 +261,16 @@ func (s *Set) getTemplate(name, sibling string) (template *Template, err error) 
 
 	if foundLoaded {
 		template = s.templates[newName]
+		err = s.templatesErrors[newName]
 		s.tmx.RUnlock()
 		if !isRelative && name != newName {
 			// creates an alias
 			s.tmx.Lock()
 			if _, found := s.templates[name]; !found {
 				s.templates[name] = template
+				if err != nil {
+					s.templatesErrors[name] = err
+				}
 			}
 			s.tmx.Unlock()
 		}
@@ -269,22 +282,20 @@ func (s *Set) getTemplate(name, sibling string) (template *Template, err error) 
 	s.tmx.Lock()
 	defer s.tmx.Unlock()
 
-	newName, fileName, foundLoaded, foundFile, isRelative = s.resolveNameSibling(name, sibling)
-	if foundLoaded {
-		template = s.templates[newName]
-		if !isRelative && name != newName {
-			// creates an alias
-			if _, found := s.templates[name]; !found {
-				s.templates[name] = template
-			}
-		}
-	} else if foundFile {
+	if foundFile {
 		template, err = s.loadFromFile(newName, fileName)
+		if err != nil {
+			// cache error
+			s.templatesErrors[newName] = err
+		}
 
 		if !isRelative && name != newName {
 			// creates an alias
 			if _, found := s.templates[name]; !found {
 				s.templates[name] = template
+				if err != nil {
+					s.templatesErrors[name] = err
+				}
 			}
 		}
 
